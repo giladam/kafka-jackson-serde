@@ -6,25 +6,20 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.Consumed;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.KStream;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -34,14 +29,14 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.giladam.kafka.jacksonserde.Jackson2Serde;
+import com.giladam.kafka.jacksonserde.Jackson2Deserializer;
 import com.giladam.kafka.jacksonserde.Jackson2Serializer;
 import com.giladam.kafka.jacksonserde.Sample;
 
 
-public class StreamsApplicationTestingIT {
+public class JsonProducerConsumerTestingIT {
 
-    private static final Logger log = LoggerFactory.getLogger(StreamsApplicationTestingIT.class);
+    private static final Logger log = LoggerFactory.getLogger(JsonProducerConsumerTestingIT.class);
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
@@ -65,54 +60,37 @@ public class StreamsApplicationTestingIT {
 
     @Test
     public void testStreamsApplicationSerde() throws InterruptedException {
-        final String TEST_TOPIC_NAME = "kafka-jackson-serde.streamstests";
+        final String TEST_TOPIC_NAME = "kafka-jackson-serde.producer-consumer-tests.json";
 
         log.info("Creating testing topic: {}", TEST_TOPIC_NAME);
-        NewTopic topicToCreate = new NewTopic(TEST_TOPIC_NAME, 3, (short) 1).configs(Collections.emptyMap());
+        NewTopic topicToCreate = new NewTopic(TEST_TOPIC_NAME, 1, (short) 1).configs(Collections.emptyMap());
         adminClient.createTopics(Collections.singleton(topicToCreate));
 
-        Properties streamsConfig = new Properties();
-        streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, UUID.randomUUID().toString());
-        streamsConfig.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-        streamsConfig.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-        streamsConfig.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, IntegrationTestingUtils.bootstrapServersConfig());
-        streamsConfig.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
-
-        StreamsBuilder builder = new StreamsBuilder();
-
-        Serde<Sample> sampleSerde = new Jackson2Serde<>(OBJECT_MAPPER, Sample.class);
-        Consumed<String, Sample> consumedWith = Consumed.with(Serdes.String(), sampleSerde)
-                                                        .withOffsetResetPolicy(Topology.AutoOffsetReset.EARLIEST);
-
-        KStream<String, Sample> sampleMessages = builder.stream(TEST_TOPIC_NAME, consumedWith);
-
-        AtomicBoolean somethingGotStreamed = new AtomicBoolean(false);
-
-        //test if we deserialize what's in the stream correctly:
-        sampleMessages.foreach((k,v) -> {
-            somethingGotStreamed.set(true);
-            Assert.assertTrue(ObjectUtils.allNotNull(v.getDateField(),
-                                                     v.getInstantField(),
-                                                     v.getStringField()));
-        });
-
-        final KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfig);
-        streams.cleanUp();
-        streams.start();
-
-        //give it some time to startup and run
-        Thread.sleep(5000); //TODO: change to use stream listeners rather than just relying on a delay.
+        Consumer<String,Sample> consumer = createConsumer();
+        consumer.subscribe(Collections.singleton(TEST_TOPIC_NAME));
 
         sendMessagesToTopic(TEST_TOPIC_NAME);
 
-        //give it some time to run
-        Thread.sleep(5000);//TODO: change to timeout instead of just relying on a delay
+        int maxPollsWithoutRecords = 10;
+        int pollsWithoutRecords = 0;
+        AtomicInteger numberOfRecordsRead = new AtomicInteger(0);
 
-        Assert.assertTrue(somethingGotStreamed.get());
+        while (pollsWithoutRecords <= maxPollsWithoutRecords) {
+            ConsumerRecords<String, Sample> records = consumer.poll(1000);
+            if (records.count() == 0) {
+                pollsWithoutRecords++;
+            } else {
+                pollsWithoutRecords = 0;
 
-        log.info("Shutting down.");
-        streams.close();
-        log.info("Shutdown complete.");
+                records.forEach(cr -> {
+                    numberOfRecordsRead.incrementAndGet();
+                    Assert.assertTrue(IntegrationTestingUtils.sampleHasNoNullFields(cr.value()));
+                });
+            }
+        }
+
+        log.info("Read {} records from topic", numberOfRecordsRead);
+        Assert.assertTrue(numberOfRecordsRead.get() > 0);
 
         log.info("Deleting testing topic: {}", TEST_TOPIC_NAME);
         adminClient.deleteTopics(Collections.singleton(TEST_TOPIC_NAME));
@@ -129,6 +107,18 @@ public class StreamsApplicationTestingIT {
         producer.close();
 
         log.info("Sent messages to topic: {}", topicName);
+    }
+
+
+    private Consumer<String,Sample> createConsumer() {
+        Map<String,Object> consumerConfig = new HashMap<>();
+        consumerConfig.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, IntegrationTestingUtils.bootstrapServersConfig());
+        consumerConfig.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString());
+        consumerConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new KafkaConsumer<>(consumerConfig,
+                                   Serdes.String().deserializer(),
+                                   new Jackson2Deserializer<>(OBJECT_MAPPER, Sample.class));
     }
 
 

@@ -6,8 +6,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+
+import com.giladam.kafka.jacksonserde.Sample;
 
 public class IntegrationTestingUtils {
 
@@ -43,4 +46,11 @@ public class IntegrationTestingUtils {
         return testingKafkaHost + ":" + testingKafkaPort;
     }
 
+
+    public static boolean sampleHasNoNullFields(Sample sample) {
+        return ObjectUtils.allNotNull(
+                sample.getDateField(),
+                sample.getInstantField(),
+                sample.getStringField());
+    }
 }

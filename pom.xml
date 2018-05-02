@@ -34,7 +34,7 @@
         <url>https://github.com/giladam/kafka-jackson-serde.git</url>
         <connection>scm:git:git@github.com:giladam/kafka-jackson-serde.git</connection>
         <developerConnection>scm:git:git@github.com:giladam/kafka-jackson-serde.git</developerConnection>
-       <tag>HEAD</tag>
+       <tag>kafka-jackson-serde-1.0.0</tag>
   </scm>
 
     <dependencies>

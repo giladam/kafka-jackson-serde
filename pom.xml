@@ -3,7 +3,7 @@
 
     <groupId>com.giladam</groupId>
     <artifactId>kafka-jackson-serde</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
 
     <packaging>jar</packaging>
 
@@ -34,7 +34,7 @@
         <url>https://github.com/giladam/kafka-jackson-serde.git</url>
         <connection>scm:git:git@github.com:giladam/kafka-jackson-serde.git</connection>
         <developerConnection>scm:git:git@github.com:giladam/kafka-jackson-serde.git</developerConnection>
-       <tag>kafka-jackson-serde-1.0.0</tag>
+       <tag>HEAD</tag>
   </scm>
 
     <dependencies>

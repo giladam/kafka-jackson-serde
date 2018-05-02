@@ -13,13 +13,13 @@ It's not anything revolutionary, but I got sick of seeing people creating custom
 of thing for every project or worse for every type they deal with.  Maybe it's useful for you to have a 
 premade version of this type of thing, too.
 
-# Maven Dependency
+# Maven Dependency (COMING SOON)
 
 ```xml
 <dependency>
   <groupId>com.giladam</groupId>
   <artifactId>kafka-jackson-serde</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.0</version> <!-- I will publish to Maven Central soon. -->
 </dependency>
 ```
 

@@ -13,7 +13,7 @@ It's not anything revolutionary, but I got sick of seeing people creating custom
 of thing for every project or worse for every type they deal with.  Maybe it's useful for you to have a 
 premade version of this type of thing, too.
 
-NOTE: Spring Kafka's JsonSerde pretty much does the same thing, so you should probably use it instead: [spring-kafka](http://projects.spring.io/spring-kafka/)'s [JsonSerializer](https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/JsonSerializer.html)/[JsonDeserializer](https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/JsonDeserializer.html)/[JsonSerde](https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/JsonSerde.html) I didn't know it existed at the time I wrote this library.
+NOTE: Spring Kafka's JsonSerde pretty much does the same thing, so you should probably use it instead: [spring-kafka](http://projects.spring.io/spring-kafka/)'s [JsonSerializer](https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/JsonSerializer.html)/[JsonDeserializer](https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/JsonDeserializer.html)/[JsonSerde](https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/JsonSerde.html) I didn't know it existed at the time I wrote this library. (But I kind of find Spring Kafka's dependency requirements to not always work for my projects, so maybe this is still useful.  I don't know; I'm still deciding.  I just know I can't always rely on Spring-Kafka.)
 
 # Maven Dependency
 
